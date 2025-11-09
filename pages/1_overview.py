@@ -33,7 +33,7 @@ else:
 # -----------------------------------------
 st.markdown("### 📊 Dataset Summary")
 st.write(f"**Rows:** {df.shape[0]}, **Columns:** {df.shape[1]}")
-st.write("**Columns:**", list(df.columns))
+#st.write("**Columns:**", list(df.columns))
 
 st.dataframe(df.head(10), use_container_width=True)
 

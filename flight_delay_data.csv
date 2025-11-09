@@ -1,4 +1,4 @@
-airline,origin,dest,departure_time,arrival_time,distance,day_of_week,month,weather,delay
+airline,origin,destination,sched_dep_hour,sched_arr_hour,distance,day_of_week,month,weather,delay_minutes
 AirD,COK,AMD,10,14,1824,4,7,Clear,45
 AirC,HYD,COK,1,5,1615,5,6,Clear,28
 AirA,MAA,DEL,21,22,847,0,1,Clear,18

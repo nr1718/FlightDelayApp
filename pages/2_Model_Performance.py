@@ -1,3 +1,5 @@
+# pages/2_Model_Performance.py
+
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -8,13 +10,14 @@ import numpy as np
 st.set_page_config(page_title="Model Performance | Flight Delay App", layout="wide")
 
 st.title("📊 Model Performance Summary")
-st.markdown("### Evaluate the performance of your trained model")
+st.markdown("### Evaluate the performance of your trained model (Regression)")
+st.markdown("---")
 
 # -----------------------------------------
-# Paths
+# Paths (CORRECTED)
 # -----------------------------------------
 model_path = "models/best_model.pkl"
-performance_csv = "model_performance.csv"
+performance_csv = "output/model_performance.csv" # CORRECTED PATH
 
 # -----------------------------------------
 # Check model existence
@@ -23,9 +26,15 @@ if not os.path.exists(model_path):
     st.error("⚠️ Model file not found. Please ensure `models/best_model.pkl` exists.")
     st.stop()
 
-# Load model
-model = joblib.load(model_path)
-st.success("✅ Trained model loaded successfully!")
+# Load model and preprocessors
+try:
+    model = joblib.load(model_path)
+    scaler = joblib.load('models/scaler.pkl')
+    st.success("✅ Trained model and scaler loaded successfully!")
+except Exception as e:
+    st.error(f"Error loading model components: {e}")
+    st.stop()
+
 
 # -----------------------------------------
 # Load performance summary
@@ -33,103 +42,65 @@ st.success("✅ Trained model loaded successfully!")
 if os.path.exists(performance_csv):
     df_perf = pd.read_csv(performance_csv)
     st.subheader("📈 Model Performance Metrics")
-    st.dataframe(df_perf, use_container_width=True)
-
-    # Accuracy trend (if multiple models tested)
-    if "Accuracy" in df_perf.columns:
-        fig_acc = px.line(
-            df_perf,
-            x=df_perf.index,
-            y="Accuracy",
-            title="📈 Accuracy Trend over Model Iterations",
-            markers=True,
-            color_discrete_sequence=["#00BFFF"]
-        )
-        st.plotly_chart(fig_acc, use_container_width=True)
-
-    # Precision, Recall, F1-score comparison
-    metric_cols = [col for col in ["Precision", "Recall", "F1-Score"] if col in df_perf.columns]
-    if metric_cols:
-        fig_metrics = px.bar(
-            df_perf.melt(value_vars=metric_cols, var_name="Metric", value_name="Score"),
-            x="Metric",
-            y="Score",
-            color="Metric",
-            barmode="group",
-            title="🔍 Model Metric Comparison",
-            color_discrete_sequence=px.colors.sequential.RdPu
-        )
-        st.plotly_chart(fig_metrics, use_container_width=True)
+    
+    # Display the metrics table (R2, MAE)
+    st.table(df_perf) # Using st.table is clean for small metric tables
+    
+    # Display metrics in columns for better visualization
+    metric_dict = df_perf.set_index('Metric')['Value'].to_dict()
+    
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("R-squared ($R^2$)", metric_dict.get('R-squared ($R^2$)', 'N/A'))
+    col2.metric("MAE (Min)", metric_dict.get('Mean Absolute Error (MAE)', 'N/A'))
+    col3.metric("Train Set Size", metric_dict.get('Trained On Rows', 'N/A'))
+    col4.metric("Test Set Size", metric_dict.get('Test Set Rows', 'N/A'))
 
 else:
-    st.error("❌ `model_performance.csv` not found. Run model training first.")
+    st.error("❌ `outputs/model_performance.csv` not found. Please reload the main app page to run model training first.")
     st.stop()
 
+
 # -----------------------------------------
-# Feature Importance (if available)
+# Feature Importance (Coefficient Magnitude for Linear Regression)
 # -----------------------------------------
-st.markdown("### 🧠 Feature Importance")
+st.markdown("### 🧠 Feature Coefficients (Importance)")
+
 try:
-    if hasattr(model, "feature_importances_"):
-        importance = pd.DataFrame({
-            "Feature": model.feature_names_in_,
-            "Importance": model.feature_importances_
-        }).sort_values(by="Importance", ascending=False)
+    # Feature names are NOT stored in the LinearRegression model, you must supply them.
+    # Assuming the encoded features are:
+    feature_names = ['airline_enc', 'origin_enc', 'dest_enc', 'departure_time', 'arrival_time', 'distance', 'day_of_week', 'month', 'weather_enc']
+    
+    # Get coefficients
+    coefs = model.coef_
+    
+    importance = pd.DataFrame({
+        "Feature": feature_names,
+        # Use the absolute magnitude of the coefficient for importance, as signs don't matter here
+        "Importance": np.abs(coefs), 
+        "Coefficient": coefs # Keep the raw coefficient for analysis
+    }).sort_values(by="Importance", ascending=True)
 
-        fig_imp = px.bar(
-            importance,
-            x="Importance",
-            y="Feature",
-            orientation="h",
-            title="🎯 Feature Importance",
-            color="Importance",
-            color_continuous_scale="Viridis",
-            animation_frame=None
-        )
-        st.plotly_chart(fig_imp, use_container_width=True)
-    else:
-        st.warning("⚠️ Model has no feature importance attribute.")
+    # Plotting coefficients
+    fig_imp = px.bar(
+        importance,
+        x="Importance",
+        y="Feature",
+        orientation="h",
+        # Use Coefficient for color to show positive/negative impact
+        color="Coefficient", 
+        title="🎯 Feature Impact (Coefficient Magnitude)",
+        color_continuous_scale=px.colors.diverging.RdBu, # Red/Blue scale is good for +/-
+        hover_data={"Coefficient": ':.4f'}
+    )
+    st.plotly_chart(fig_imp, use_container_width=True)
+
 except Exception as e:
-    st.warning(f"⚠️ Could not load feature importance: {e}")
+    st.warning(f"⚠️ Could not load feature coefficients. Ensure training features are consistent. Error: {e}")
+
 
 # -----------------------------------------
-# Confusion Matrix (if saved separately)
+# (Removed sections for Confusion Matrix, ROC Curve, and Accuracy Trend as they are Classification metrics)
 # -----------------------------------------
-conf_matrix_file = "confusion_matrix.csv"
-if os.path.exists(conf_matrix_file):
-    st.markdown("### 🔢 Confusion Matrix")
-    cm = pd.read_csv(conf_matrix_file, header=None)
-    cm.columns = ["Predicted Negative", "Predicted Positive"]
-    cm.index = ["Actual Negative", "Actual Positive"]
-
-    fig_cm = px.imshow(
-        cm,
-        text_auto=True,
-        color_continuous_scale="Plasma",
-        title="📉 Confusion Matrix Heatmap"
-    )
-    st.plotly_chart(fig_cm, use_container_width=True)
-else:
-    st.info("ℹ️ Confusion matrix file not found (`confusion_matrix.csv`). Skipping...")
-
-# -----------------------------------------
-# ROC Curve (if file exists)
-# -----------------------------------------
-roc_file = "roc_data.csv"
-if os.path.exists(roc_file):
-    st.markdown("### 📉 ROC Curve")
-    roc_data = pd.read_csv(roc_file)
-    fig_roc = px.area(
-        roc_data,
-        x="False Positive Rate",
-        y="True Positive Rate",
-        title="💡 Receiver Operating Characteristic (ROC) Curve",
-        color_discrete_sequence=["#FF6B6B"],
-        animation_frame=None
-    )
-    st.plotly_chart(fig_roc, use_container_width=True)
-else:
-    st.info("ℹ️ ROC data file not found (`roc_data.csv`). Skipping...")
 
 # -----------------------------------------
 # Footer

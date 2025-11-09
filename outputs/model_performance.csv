@@ -1,0 +1,5 @@
+Metric,Value
+R-squared ($R^2$),0.2536
+Mean Absolute Error (MAE),14.42
+Trained On Rows,800
+Test Set Rows,200
