@@ -21,12 +21,12 @@ os.makedirs('outputs', exist_ok=True)
 
 # ------------------- Streamlit Config -------------------
 st.set_page_config(
-    page_title="Flight Delay SaaS Dashboard",
+    page_title="Flight Delay Prediction Dashboard",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-st.title("✈️ Flight Delay SaaS Dashboard")
+st.title("✈️ Flight Delay Prediction Dashboard")
 st.caption("Developed by Nirmal Raj | Flight Delay App © 2025")
 
 # ------------------- Load or Generate Data -------------------
@@ -255,7 +255,7 @@ with tab_report:
     st.subheader("📄 Download DOCX Report")
     if st.button("Generate DOCX Report"):
         doc = Document()
-        doc.add_heading("Flight Delay SaaS Dashboard Report", 0)
+        doc.add_heading("Flight Delay Prediction Dashboard Report", 0)
         doc.add_paragraph(f"Filtered Flights Count: {len(df_filtered)}")
         doc.add_paragraph(f"Average Delay: {df_filtered['delay'].mean():.2f} minutes")
         doc.add_heading("Charts", level=1)
@@ -265,7 +265,7 @@ with tab_report:
             fig.write_image(out_path)
             doc.add_picture(out_path, width=Inches(6))
 
-        report_file = "Flight_Delay_SaaS_Report.docx"
+        report_file = "Flight_Delay_Report.docx"
         doc.save(report_file)
         st.success(f"✅ Report saved as {report_file}. Check the folder for the file.")
 
